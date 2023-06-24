@@ -1,11 +1,5 @@
-from getpass import getpass
-from app.user import User, DataManager
-from app.authorization import authorize_user
-
-
-def main():
-    authorize_user()
-
+from app.server import Server
 
 if __name__ == "__main__":
-    main()
+    server = Server("localhost", 8080)
+    server.start()

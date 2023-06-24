@@ -1,6 +1,7 @@
 import psycopg2
 import os
 from dotenv import load_dotenv
+import datetime
 
 
 class DataManager:
@@ -11,9 +12,8 @@ class DataManager:
         self.password = os.getenv("password")
         self.database = os.getenv("database")
         self.port = os.getenv("port")
-        self.users = []
 
-    def save_user_in_list(self, user):
+    def create_users_table(self):
         con = psycopg2.connect(
             host=self.host,
             user=self.user,
@@ -22,38 +22,46 @@ class DataManager:
             port=self.port,
         )
         cur = con.cursor()
-        cur.execute("SELECT * FROM person")
-        rows = cur.fetchall()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS Users (
+                ID INT ,
+                NAME VARCHAR(255),
+                EMAIL VARCHAR(255),
+                USERNAME VARCHAR(255),
+                PASSWORD_ VARCHAR(255)
+            )
+            """
+        )
+
+        con.commit()
         con.close()
-        users = []
-        for row in rows:
+
+    def get_user_by_username(self, username):
+        con = psycopg2.connect(
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            port=self.port,
+        )
+        cur = con.cursor()
+
+        username_query = "SELECT * FROM users WHERE username = %s"
+        cur.execute(username_query, (username,))
+        existing_username = cur.fetchone()
+        if existing_username:
             from app.user import User
 
             user = User(
-                row[1].strip(),
-                row[2].strip(),
-                row[3].strip(),
-                row[4].strip(),
-                row[0],
+                existing_username[1].strip(),
+                existing_username[2].strip(),
+                existing_username[3].strip(),
+                existing_username[4].strip(),
+                existing_username[0],
             )
-            users.append(user)
-
-        self.users = users
-
-    def get_user_by_username(self, username):
-        user = None
-        self.save_user_in_list(user)
-        print(self.users)
-        for user in self.users:
-            if user.username == username:
-                return user
-        return None
-
-    def get_user_by_pass(self, password):
-        for user in self.users:
-            if user.password == password:
-                return user
-        return None
+            return user
+        else:
+            return None
 
     def is_id_taken(self, user_id):
         con = psycopg2.connect(
@@ -65,7 +73,7 @@ class DataManager:
         )
         cur = con.cursor()
 
-        id_query = "SELECT id FROM PERSON WHERE id = %s"
+        id_query = "SELECT id FROM users WHERE id = %s"
         cur.execute(id_query, (user_id,))
         existing_id = cur.fetchone()
 
@@ -83,7 +91,7 @@ class DataManager:
         )
         cur = con.cursor()
 
-        username_query = "SELECT username FROM PERSON WHERE username = %s"
+        username_query = "SELECT username FROM users WHERE username = %s"
         cur.execute(username_query, (username,))
         existing_username = cur.fetchone()
 
@@ -101,7 +109,7 @@ class DataManager:
         )
         cur = con.cursor()
 
-        email_query = "SELECT email FROM PERSON WHERE email = %s"
+        email_query = "SELECT email FROM users WHERE email = %s"
         cur.execute(email_query, (email,))
         existing_email = cur.fetchone()
 
@@ -119,18 +127,7 @@ class DataManager:
         )
         cur = con.cursor()
 
-        cur.execute(
-            """CREATE TABLE IF NOT EXISTS PERSON (
-                ID INT ,
-                NAME VARCHAR(255),
-                EMAIL VARCHAR(255),
-                USERNAME VARCHAR(255),
-                PASSWORD_ VARCHAR(255)
-            )
-            """
-        )
-
-        insert_query = "INSERT INTO PERSON (id, name, email, username, password_) VALUES (%s, %s, %s, %s, %s)"
+        insert_query = "INSERT INTO Users (id, name, email, username, password_) VALUES (%s, %s, %s, %s, %s)"
         values = (
             user.user_ID,
             user.name,
@@ -138,6 +135,207 @@ class DataManager:
             user.username,
             user.password,
         )
+        cur.execute(insert_query, values)
+        con.commit()
+        con.close()
+
+    def save_logs(self, username, status):
+        con = psycopg2.connect(
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            port=self.port,
+        )
+        cur = con.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS users_logs (
+                        USERNAME VARCHAR(255),
+                        time TIMESTAMP,
+                        status varchar(255)
+                    )
+                    """
+        )
+        insert_query = (
+            "INSERT INTO users_logs (username, time ,status) VALUES (%s, %s,%s)"
+        )
+        values = (
+            username,
+            datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            status,
+        )
+        cur.execute(insert_query, values)
+        con.commit()
+        con.close()
+
+    def check_user_log(self, username):
+        con = psycopg2.connect(
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            port=self.port,
+        )
+
+        cur = con.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS users_logs (
+                USERNAME VARCHAR(255),
+                time TIMESTAMP,
+                status varchar(255)
+            )
+            """
+        )
+        last_log_query = "SELECT status FROM users_logs WHERE username = %s  ORDER BY time DESC LIMIT 1"
+        cur.execute(last_log_query, (username,))
+        last_log = cur.fetchone()
+        con.close()
+
+        is_last_log_out = False
+        if last_log is None or last_log[0] == "Log out":
+            is_last_log_out = True
+        return is_last_log_out
+
+
+class RoomManager(DataManager):
+    def __init__(self):
+        super().__init__()
+
+    def create_room_table(self):
+        con = psycopg2.connect(
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            port=self.port,
+        )
+        cur = con.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS ROOMs (
+                ID SERIAL PRIMARY KEY,
+                NAME VARCHAR(255),
+                STATUS VARCHAR(255)
+            )"""
+        )
+        con.commit()
+        con.close()
+
+    def is_room_exists(self, name):
+        con = psycopg2.connect(
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            port=self.port,
+        )
+        cur = con.cursor()
+
+        select_query = "SELECT * FROM ROOM WHERE NAME = %s"
+        cur.execute(select_query, (name,))
+        existing_room = cur.fetchone()
+
+    def get_rooms(self):
+        con = psycopg2.connect(
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            port=self.port,
+        )
+        cur = con.cursor()
+
+        select_query = "SELECT * FROM ROOMs"
+        cur.execute(select_query)
+        existing_rooms = cur.fetchall()
+
+        con.close()
+
+        return existing_rooms
+
+    def get_room_by_id(self, room_id):
+        con = psycopg2.connect(
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            port=self.port,
+        )
+        cur = con.cursor()
+
+        select_query = "SELECT * FROM ROOMs where id = %s"
+        cur.execute(select_query, (room_id,))
+        existing_room = cur.fetchall()[0]
+
+        con.close()
+
+        return existing_room
+
+    def create_room(self, name, status):
+        con = psycopg2.connect(
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            port=self.port,
+        )
+        cur = con.cursor()
+        insert_query = "INSERT INTO ROOMs (name, status) VALUES (%s, %s)"
+        values = (name, status)
+        cur.execute(insert_query, values)
+        con.commit()
+        con.close()
+
+    def add_room(self, name, status):
+        con = psycopg2.connect(
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            port=self.port,
+        )
+        cur = con.cursor()
+        insert_query = "INSERT INTO ROOMs (name, status) VALUES (%s, %s)"
+        values = (name, status)
+        cur.execute(insert_query, values)
+        con.commit()
+        con.close()
+
+
+class ItemManager(DataManager):
+    def __init__(self):
+        super().__init__()
+
+    def create_items_table(self):
+        con = psycopg2.connect(
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            port=self.port,
+        )
+        cur = con.cursor()
+        cur.execute(
+            """CREATE TABLE IF NOT EXISTS items (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(255),
+                price NUMERIC(10, 2)
+            )"""
+        )
+        con.commit()
+        con.close()
+
+    def add_item_to_database(self, name, price):
+        con = psycopg2.connect(
+            host=self.host,
+            user=self.user,
+            password=self.password,
+            database=self.database,
+            port=self.port,
+        )
+        cur = con.cursor()
+
+        insert_query = "INSERT INTO items (name, price) VALUES (%s, %s)"
+        values = (name, price)
         cur.execute(insert_query, values)
         con.commit()
         con.close()
