@@ -275,7 +275,7 @@ class RoomManager(DataManager):
 
         return existing_room
 
-    def create_room(self, name, item, price, time, status):
+    def create_room(self, room_id, name, item, price, time, status):
         con = psycopg2.connect(
             host=self.host,
             user=self.user,
@@ -284,8 +284,8 @@ class RoomManager(DataManager):
             port=self.port,
         )
         cur = con.cursor()
-        insert_query = "INSERT INTO ROOMs (name, item,price,time , status) VALUES (%s, %s, %s, %s, %s)"
-        values = (name, item, price, time, status)
+        insert_query = "INSERT INTO ROOMs (id,name, item,price,time , status) VALUES (%s, %s, %s, %s, %s,%s)"
+        values = (room_id, name, item, price, time, status)
         cur.execute(insert_query, values)
         con.commit()
         con.close()
