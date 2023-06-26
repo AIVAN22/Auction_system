@@ -69,7 +69,7 @@ class Authorization:
                 if user:
                     return user
             elif choice == "3":
-                return None
+                break
             else:
                 print("Invalid choice. Please try again.")
 
