@@ -4,7 +4,6 @@ import threading
 from random import randrange
 from app.DataBaseManager import ItemManager, RoomManager, DataManager
 from app.room import Room
-import datetime
 
 
 class Server:
@@ -17,14 +16,15 @@ class Server:
         self.item_manager = ItemManager()
         self.active_rooms = {}
 
-    def room_creator(self, user):
-        create_room = Room(
-            input("Add item: "), input("Add price: "), input("Add time:")
-        )
+    def room_creator(self, user, item_name, price, time):
+        create_room = Room(item_name, price, time)
         create_room.create_room()
         create_room.add_user(user)
-        create_room.inside_room()
         self.active_rooms[create_room.room_name] = create_room
+        users_list = create_room.get_users()
+        user_info = "".join(str(user) for user in users_list)
+        room_data = f"\nUsers: \n{user_info} \nCreate room: {create_room.room_name}\nTime: {create_room.auction_time_spend}\nStarting Price: {create_room.starting_price}\nStatus: {create_room.status}"
+        return room_data
 
     def join_room(self, room, user):
         room_name = room[1]
@@ -35,7 +35,7 @@ class Server:
             active_room.add_user(user)
             return room_data
         else:
-            print("Room not found.")
+            return "Room not found."
 
     def start(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -53,12 +53,11 @@ class Server:
 
     def handle_client(self, client_socket):
         user = None
-
         while True:
             try:
-                request = ""
                 user_data = client_socket.recv(5048)
                 try:
+                    request = ""
                     user = pickle.loads(user_data)
                     print("Received user_data:", user)
                     log_in = "Log in"
@@ -100,9 +99,8 @@ class Server:
             item_name = request_parts[1]
             item_price = request_parts[2]
             item_time = request_parts[3]
-            self.room_manager.add_room(item_name, item_price, item_time)
-            self.room_creator(user)
-            return "Room created successfully."
+            room_data = self.room_creator(user, item_name, item_price, item_time)
+            return room_data
 
         elif request_parts[0] == "join_room":
             room_id = int(request_parts[1])

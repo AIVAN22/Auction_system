@@ -212,8 +212,11 @@ class RoomManager(DataManager):
         cur = con.cursor()
         cur.execute(
             """CREATE TABLE IF NOT EXISTS ROOMs (
-                ID SERIAL PRIMARY KEY,
+                ID int,
                 NAME VARCHAR(255),
+                Item_name VARCHAR(255),
+                price VARCHAR(255),
+                time VARCHAR(255),
                 STATUS VARCHAR(255)
             )"""
         )
@@ -230,9 +233,11 @@ class RoomManager(DataManager):
         )
         cur = con.cursor()
 
-        select_query = "SELECT * FROM ROOM WHERE NAME = %s"
+        select_query = "SELECT * FROM ROOMs WHERE NAME = %s"
         cur.execute(select_query, (name,))
         existing_room = cur.fetchone()
+
+        return existing_room is not None
 
     def get_rooms(self):
         con = psycopg2.connect(
@@ -285,7 +290,7 @@ class RoomManager(DataManager):
         con.commit()
         con.close()
 
-    def add_room(self, name, status):
+    def add_room(self, name, item, price, time, status):
         con = psycopg2.connect(
             host=self.host,
             user=self.user,
@@ -294,8 +299,8 @@ class RoomManager(DataManager):
             port=self.port,
         )
         cur = con.cursor()
-        insert_query = "INSERT INTO ROOMs (name, status) VALUES (%s, %s)"
-        values = (name, status)
+        insert_query = "INSERT INTO ROOMs (name, item,price,time , status) VALUES (%s, %s, %s, %s, %s)"
+        values = (name, item, price, time, status)
         cur.execute(insert_query, values)
         con.commit()
         con.close()

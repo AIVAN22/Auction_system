@@ -55,11 +55,24 @@ def main():
                 response = client_socket.recv(5048).decode()
                 print(response)
 
-                if response == 0:
-                    print("Going back to the main menu.")
-                    continue
+                if response != "Back to menu":
+                    if response == "Room not found.":
+                        print(response)
+                    else:
+                        while True:
+                            choice = input("Enter Choice:\n1. Bid\n2. Exit room\n:")
+                            if choice == "1":
+                                pass
+                            elif choice == "2":
+                                print("Exiting the room.")
+                                break
+                            else:
+                                print("Invalid choice. Please try again.")
+
+                        print("Failed to join the room.")
                 else:
-                    print(response)
+                    continue
+
             elif user_input == 3:
                 change_profile_command = "change_profile_info"
                 client_socket.send(change_profile_command.encode())

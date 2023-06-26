@@ -27,9 +27,21 @@ class Room:
         if user in self.users:
             self.users.remove(user)
 
+    def get_users(self):
+        users = []
+        for user in self.users:
+            users.append(user)
+        return users
+
     def create_room(self):
         if not self.room_manager.is_room_exists(self.room_name):
-            self.room_manager.add_room(self.room_name, self.status)
+            self.room_manager.add_room(
+                self.room_name,
+                self.item_name,
+                self.starting_price,
+                self.auction_time_spend,
+                self.status,
+            )
             print(f"Room '{self.room_name}' created.")
         else:
             print(f"Room '{self.room_name}' already exists.")

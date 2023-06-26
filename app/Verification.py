@@ -73,37 +73,49 @@ class Authorization:
             else:
                 print("Invalid choice. Please try again.")
 
-    def verify_password(self, password, again_password):
+    def verify_password(self, password, password_again):
         numbers = False
         special_symbol = False
         len_11 = False
         upper_case = False
         count_up = 0
-        if password != again_password and len(password) < 11:
-            print("Passwords do not match!")
-        else:
-            len_11 = True
-            for element in password:
-                if element.isdigit():
-                    numbers = True
-                if not element.isalnum():
-                    special_symbol = True
-                if element.isupper():
-                    count_up += 1
-                    if count_up >= 2:
-                        upper_case = True
-            return password
-
-        if not len_11:
-            print("Password length should be at least 11 characters.")
-        elif not numbers:
-            print("Password should contain at least one digit.")
-        elif not special_symbol:
-            print("Password should contain at least one special symbol.")
-        elif not upper_case:
-            print("Password should contain at least two uppercase letters.")
-        else:
-            print("Password is valid!")
+        while True:
+            if password != password_again:
+                print("Passwords do not match!")
+                password = input("Enter new password: ")
+                password_again = input("Enter again password: ")
+                continue
+            while True:
+                if len(password) >= 11:
+                    len_11 = True
+                for element in password:
+                    if element.isdigit():
+                        numbers = True
+                    if not element.isalnum():
+                        special_symbol = True
+                    if element.isupper():
+                        count_up += 1
+                        if count_up >= 2:
+                            upper_case = True
+                if not len_11:
+                    print("Password length should be at least 11 characters.")
+                    password = input("Enter new password: ")
+                elif not numbers:
+                    print("Password should contain at least one digit.")
+                    password = input("Enter new password: ")
+                elif not special_symbol:
+                    print("Password should contain at least one special symbol.")
+                    password = input("Enter new password: ")
+                elif not upper_case:
+                    print("Password should contain at least two uppercase letters.")
+                    password = input("Enter new password: ")
+                else:
+                    print("Password is valid!")
+                    if password != password_again:
+                        password_again = input("Enter again password: ")
+                        return password
+                    else:
+                        return password
 
     def verify_username(self, username):
         data_manager = self.data_manager
@@ -120,9 +132,12 @@ class Authorization:
         return email
 
     def verify_email(self, email):
-        regex = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b"
-        if re.fullmatch(regex, email):
-            print("Valid Email")
-            return email
-        else:
-            print("Invalid Email")
+        while True:
+            regex = r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}\b"
+            if re.fullmatch(regex, email):
+                print("Valid Email")
+                return email
+            else:
+                print("Invalid Email")
+                email = input("Enter new email: ")
+                continue

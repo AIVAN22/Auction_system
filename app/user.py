@@ -26,7 +26,7 @@ class User:
         return self.email
 
     def __str__(self):
-        return f"User: {self.username} with ID: {self.user_ID}"
+        return f"{self.username} - {self.user_ID}"
 
     def save_data(self):
         self.data_manager.save_user(self)
