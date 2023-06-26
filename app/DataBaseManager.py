@@ -214,7 +214,7 @@ class RoomManager(DataManager):
             """CREATE TABLE IF NOT EXISTS ROOMs (
                 ID int,
                 NAME VARCHAR(255),
-                Item_name VARCHAR(255),
+                Item VARCHAR(255),
                 price VARCHAR(255),
                 time VARCHAR(255),
                 STATUS VARCHAR(255)
@@ -275,22 +275,7 @@ class RoomManager(DataManager):
 
         return existing_room
 
-    def create_room(self, name, status):
-        con = psycopg2.connect(
-            host=self.host,
-            user=self.user,
-            password=self.password,
-            database=self.database,
-            port=self.port,
-        )
-        cur = con.cursor()
-        insert_query = "INSERT INTO ROOMs (name, status) VALUES (%s, %s)"
-        values = (name, status)
-        cur.execute(insert_query, values)
-        con.commit()
-        con.close()
-
-    def add_room(self, name, item, price, time, status):
+    def create_room(self, name, item, price, time, status):
         con = psycopg2.connect(
             host=self.host,
             user=self.user,

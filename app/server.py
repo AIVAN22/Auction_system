@@ -28,7 +28,6 @@ class Server:
 
     def join_room(self, room, user):
         room_name = room[1]
-
         if room_name in self.active_rooms:
             active_room = self.active_rooms[room_name]
             active_room.add_user(user)
@@ -65,12 +64,15 @@ class Server:
                     user = pickle.loads(user_data)
                     print("Received user_data:", user)
                     log_in = "Log in"
+                    self.room_manager.create_room_table()
+                    self.user_manager.create_users_table()
+                    self.item_manager.create_items_table()
                     self.user_manager.save_logs(user.username, log_in)
                 except pickle.UnpicklingError:
                     print("Unpickling user_data:", user_data)
                     user_data_decode = user_data.decode()
                     if user_data_decode == "0":
-                        response = self.process_request(request, user)
+                        response = "Back to menu"
                         client_socket.send(response.encode())
                         continue
                     user_data_parts = user_data_decode.split(",")
@@ -94,7 +96,6 @@ class Server:
                 else:
                     response = self.process_request(request, user)
                     client_socket.send(response.encode())
-
             except ConnectionResetError:
                 break
         log_out = "Log out"
@@ -131,9 +132,8 @@ class Server:
             rooms_info = ""
             for room in room_list:
                 rooms_info += f"\n-ID: {room[0]}\n\t-Room Name: {room[1]}\n\t-Time: {room[4]}\n\t-Status: {room[5]} \n\t-Price: {room[3]} "
-            return rooms_info
-        else:
-            return "Back to menu"
+            else:
+                return "No Rooms"
 
 
 if __name__ == "__main__":
