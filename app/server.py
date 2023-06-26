@@ -118,6 +118,8 @@ class Server:
             for room in room_list:
                 rooms_info += f"\n-ID: {room[0]}\n\t-Room Name: {room[1]}\n\t-Time: {room[4]}\n\t-Status: {room[5]} \n\t-Price: {room[3]} "
             return rooms_info
+        else:
+            return "Back to menu"
 
 
 if __name__ == "__main__":
