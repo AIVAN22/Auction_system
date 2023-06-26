@@ -22,17 +22,18 @@ class Server:
         create_room.add_user(user)
         self.active_rooms[create_room.room_name] = create_room
         users_list = create_room.get_users()
-        user_info = "".join(str(user) for user in users_list)
+        user_info = "\t".join(str(user) for user in users_list)
         room_data = f"\nUsers: \n{user_info} \nCreate room: {create_room.room_name}\nTime: {create_room.auction_time_spend}\nStarting Price: {create_room.starting_price}\nStatus: {create_room.status}"
         return room_data
 
     def join_room(self, room, user):
         room_name = room[1]
-        room_data = f"Joining room: {room_name}\nTime: {room[4]}\nStarting Price: {room[3]}\nStatus: {room[5]}"
-
         if room_name in self.active_rooms:
             active_room = self.active_rooms[room_name]
             active_room.add_user(user)
+            users_list = active_room.get_users()
+            user_info = "\t".join(str(user) for user in users_list)
+            room_data = f"\nUsers: \n{user_info} \nCreate room: {active_room.room_name}\nTime: {active_room.auction_time_spend}\nStarting Price: {active_room.starting_price}\nStatus: {active_room.status}"
             return room_data
         else:
             return "Room not found."
@@ -56,23 +57,34 @@ class Server:
         while True:
             try:
                 user_data = client_socket.recv(5048)
+                if not user_data:
+                    break
                 try:
                     request = ""
                     user = pickle.loads(user_data)
                     print("Received user_data:", user)
                     log_in = "Log in"
+                    self.room_manager.create_room_table()
+                    self.user_manager.create_users_table()
+                    self.item_manager.create_items_table()
                     self.user_manager.save_logs(user.username, log_in)
                 except pickle.UnpicklingError:
                     print("Unpickling user_data:", user_data)
                     user_data_decode = user_data.decode()
                     if user_data_decode == "0":
-                        response = self.process_request(request, user)
+                        response = "Back to menu"
                         client_socket.send(response.encode())
                         continue
-                    if "room_creator" != user_data_decode != "get_rooms":
-                        request = "join_room," + user_data_decode
+                    user_data_parts = user_data_decode.split(",")
+
+                    if "room_creator" == user_data_parts[0]:
+                        request = user_data_decode
+                    elif "get_rooms" == user_data_parts[0]:
+                        request = user_data_decode
                     else:
-                        request = "get_rooms"
+                        join_list = ["join_room", user_data_decode]
+                        request = ",".join(join_list)
+
                     response = self.process_request(request, user)
                     client_socket.send(response.encode())
                     continue
@@ -84,14 +96,17 @@ class Server:
                 else:
                     response = self.process_request(request, user)
                     client_socket.send(response.encode())
-
             except ConnectionResetError:
                 break
         log_out = "Log out"
-        self.user_manager.save_logs(user.username, log_out)
-        client_address = client_socket.getpeername()
-        print(f"Client disconnected: {client_address}")
-        client_socket.close()
+        if user is not None:
+            self.user_manager.save_logs(user.username, log_out)
+            client_address = client_socket.getpeername()
+            print(f"Client disconnected: {client_address}")
+            client_socket.close()
+        else:
+            print(f"Client disconnected")
+            client_socket.close()
 
     def process_request(self, request, user):
         request_parts = request.split(",")
@@ -117,9 +132,8 @@ class Server:
             rooms_info = ""
             for room in room_list:
                 rooms_info += f"\n-ID: {room[0]}\n\t-Room Name: {room[1]}\n\t-Time: {room[4]}\n\t-Status: {room[5]} \n\t-Price: {room[3]} "
-            return rooms_info
-        else:
-            return "Back to menu"
+            else:
+                return "No Rooms"
 
 
 if __name__ == "__main__":
