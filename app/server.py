@@ -22,7 +22,7 @@ class Server:
         create_room.add_user(user)
         self.active_rooms[create_room.room_name] = create_room
         users_list = create_room.get_users()
-        user_info = "\t".join(str(user) for user in users_list)
+        user_info = "\n".join(str(user) for user in users_list)
         room_data = f"\nUsers: \n{user_info} \nCreate room: {create_room.room_name}\nTime: {create_room.auction_time_spend}\nStarting Price: {create_room.starting_price}\nStatus: {create_room.status}"
         return room_data
 
@@ -32,7 +32,7 @@ class Server:
             active_room = self.active_rooms[room_name]
             active_room.add_user(user)
             users_list = active_room.get_users()
-            user_info = "\t".join(str(user) for user in users_list)
+            user_info = "\n".join(str(user) for user in users_list)
             room_data = f"\nUsers: \n{user_info} \nCreate room: {active_room.room_name}\nTime: {active_room.auction_time_spend}\nStarting Price: {active_room.starting_price}\nStatus: {active_room.status}"
             return room_data
         else:
@@ -132,8 +132,9 @@ class Server:
             rooms_info = ""
             for room in room_list:
                 rooms_info += f"\n-ID: {room[0]}\n\t-Room Name: {room[1]}\n\t-Time: {room[4]}\n\t-Status: {room[5]} \n\t-Price: {room[3]} "
-            else:
+            if rooms_info == "":
                 return "No Rooms"
+            return rooms_info
 
 
 if __name__ == "__main__":
