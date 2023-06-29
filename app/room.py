@@ -36,6 +36,7 @@ class Room:
     def create_room(self):
         if not self.room_manager.is_room_exists(self.room_name):
             self.room_manager.create_room(
+                self.room_id,
                 self.room_name,
                 self.item_name,
                 self.starting_price,
