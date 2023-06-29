@@ -186,13 +186,15 @@ class DataManager:
             )
             """
         )
-        last_log_query = "SELECT status FROM users_logs WHERE username = %s  ORDER BY time DESC LIMIT 1"
+        last_log_query = (
+            "SELECT * FROM users_logs WHERE username = %s ORDER BY time DESC LIMIT 1"
+        )
         cur.execute(last_log_query, (username,))
         last_log = cur.fetchone()
         con.close()
 
         is_last_log_out = False
-        if last_log is None or last_log[0] == "Log out":
+        if last_log is None or last_log[2] == "Log out":
             is_last_log_out = True
         return is_last_log_out
 
