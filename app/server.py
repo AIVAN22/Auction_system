@@ -40,8 +40,8 @@ class Server:
         else:
             return "Room not found."
 
-    def bid_place(self, user, item_name, price, time, amount):
-        room = Room(user, item_name, price, time)
+    def bid_place(self, user, amount):
+        room = Room()
         room.place_bid(user, amount)
 
     def start(self):
@@ -59,8 +59,9 @@ class Server:
             client_thread.start()
 
     def send_to_all(self, response):
-        for client_socket in self.client_list:
-            client_socket.send(response.encode())
+        response = response.encode()
+        for client in self.client_list:
+            client.send(response)
 
     def handle_client(self, client_socket):
         self.client_list.append(client_socket)
@@ -88,22 +89,25 @@ class Server:
                         continue
                     if user_data_decode == "1":
                         request = "bid_place"
-                    user_data_parts = user_data_decode.split(",")
-                    if "room_creator" == user_data_parts[0]:
-                        request = user_data_decode
-                    elif "get_rooms" == user_data_parts[0]:
-                        request = user_data_decode
-                    else:
-                        join_list = ["join_room", user_data_decode]
-                        request = ",".join(join_list)
+                        response = self.process_request(request, user)
 
-                    response = self.process_request(request, user)
-                    client_socket.send(response.encode())
-                    continue
+                    if request != "bid_place":
+                        user_data_parts = user_data_decode.split(",")
+                        if "room_creator" == user_data_parts[0]:
+                            request = user_data_decode
+                        elif "get_rooms" == user_data_parts[0]:
+                            request = user_data_decode
+                        else:
+                            join_list = ["join_room", user_data_decode]
+                            request = ",".join(join_list)
+
+                        response = self.process_request(request, user)
+                        client_socket.send(response.encode())
+                        continue
 
                 request = client_socket.recv(5048).decode()
                 print(request)
-                if not request:
+                if not request or request == "Exit":
                     break
                 else:
                     response = self.process_request(request, user)
@@ -149,7 +153,7 @@ class Server:
                 return "No Rooms"
             return rooms_info
 
-        elif request_parts == "bid_place":
+        elif request == "bid_place":
             return self.bid_place()
 
 
