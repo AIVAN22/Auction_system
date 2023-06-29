@@ -15,6 +15,7 @@ class Server:
         self.user_manager = DataManager()
         self.item_manager = ItemManager()
         self.active_rooms = {}
+        self.client_list = []
 
     def room_creator(self, user, item_name, price, time):
         create_room = Room(item_name, price, time)
@@ -33,10 +34,15 @@ class Server:
             active_room.add_user(user)
             users_list = active_room.get_users()
             user_info = "\n".join(str(user) for user in users_list)
-            room_data = f"\nUsers: \n{user_info} \nCreate room: {active_room.room_name}\nTime: {active_room.auction_time_spend}\nStarting Price: {active_room.starting_price}\nStatus: {active_room.status}"
+            room_data = f"\nUsers: \n{user_info} \nJoined room: {active_room.room_name}\nTime: {active_room.auction_time_spend}\nStarting Price: {active_room.starting_price}\nStatus: {active_room.status}"
+            self.send_to_all(room_data)
             return room_data
         else:
             return "Room not found."
+
+    def bid_place(self, user, item_name, price, time, amount):
+        room = Room(user, item_name, price, time)
+        room.place_bid(user, amount)
 
     def start(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -52,7 +58,12 @@ class Server:
             )
             client_thread.start()
 
+    def send_to_all(self, response):
+        for client_socket in self.client_list:
+            client_socket.send(response.encode())
+
     def handle_client(self, client_socket):
+        self.client_list.append(client_socket)
         user = None
         while True:
             try:
@@ -75,8 +86,9 @@ class Server:
                         response = "Back to menu"
                         client_socket.send(response.encode())
                         continue
+                    if user_data_decode == "1":
+                        request = "bid_place"
                     user_data_parts = user_data_decode.split(",")
-
                     if "room_creator" == user_data_parts[0]:
                         request = user_data_decode
                     elif "get_rooms" == user_data_parts[0]:
@@ -123,7 +135,8 @@ class Server:
             if room is not None:
                 print(room[0])
                 print("Joined the room!")
-                return self.join_room(room, user)
+                join_the_room = self.join_room(room, user)
+                return join_the_room
             else:
                 return "Room not found."
 
@@ -135,6 +148,9 @@ class Server:
             if rooms_info == "":
                 return "No Rooms"
             return rooms_info
+
+        elif request_parts == "bid_place":
+            return self.bid_place()
 
 
 if __name__ == "__main__":
