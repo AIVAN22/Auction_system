@@ -17,6 +17,12 @@ class Server:
         self.active_rooms = {}
         self.client_list = []
 
+    def get_user_room(self, user):
+        for room_name, room in self.active_rooms.items():
+            if user in room.get_users():
+                return room_name
+        return None
+
     def room_creator(self, user, item_name, price, time):
         create_room = Room(item_name, price, time)
         create_room.create_room()
@@ -40,9 +46,15 @@ class Server:
         else:
             return "Room not found."
 
-    def bid_place(self, user, amount):
-        room = Room()
-        room.place_bid(user, amount)
+    def bid_place(self, user, amount, room_name):
+        if room_name:
+            room = self.active_rooms[room_name]
+            bid_data = room.place_bid(user, amount)
+            self.send_to_all(bid_data)
+            return bid_data
+
+        else:
+            return "Invalid data"
 
     def start(self):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -61,7 +73,10 @@ class Server:
     def send_to_all(self, response):
         response = response.encode()
         for client in self.client_list:
-            client.send(response)
+            try:
+                client.send(response)
+            except socket.error:
+                continue
 
     def handle_client(self, client_socket):
         self.client_list.append(client_socket)
@@ -83,27 +98,28 @@ class Server:
                 except pickle.UnpicklingError:
                     print("Unpickling user_data:", user_data)
                     user_data_decode = user_data.decode()
+                    if user_data_decode == "Exit":
+                        break
                     if user_data_decode == "0":
                         response = "Back to menu"
                         client_socket.send(response.encode())
                         continue
-                    if user_data_decode == "1":
-                        request = "bid_place"
-                        response = self.process_request(request, user)
 
-                    if request != "bid_place":
-                        user_data_parts = user_data_decode.split(",")
-                        if "room_creator" == user_data_parts[0]:
-                            request = user_data_decode
-                        elif "get_rooms" == user_data_parts[0]:
-                            request = user_data_decode
-                        else:
-                            join_list = ["join_room", user_data_decode]
-                            request = ",".join(join_list)
+                    user_data_parts = user_data_decode.split(",")
+                    if "room_creator" == user_data_parts[0]:
+                        request = user_data_decode
+                    elif "get_rooms" == user_data_parts[0]:
+                        request = user_data_decode
+                    elif "bid_place" == user_data_parts[0]:
+                        bid_list = ["bid_place", user_data_parts[1]]
+                        request = ",".join(bid_list)
+                    else:
+                        join_list = ["join_room", user_data_decode]
+                        request = ",".join(join_list)
 
-                        response = self.process_request(request, user)
-                        client_socket.send(response.encode())
-                        continue
+                    response = self.process_request(request, user)
+                    client_socket.send(response.encode())
+                    continue
 
                 request = client_socket.recv(5048).decode()
                 print(request)
@@ -153,8 +169,8 @@ class Server:
                 return "No Rooms"
             return rooms_info
 
-        elif request == "bid_place":
-            return self.bid_place()
+        elif request_parts[0] == "bid_place":
+            return self.bid_place(user, int(request_parts[1]), self.get_user_room(user))
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 import socket
 import pickle
 from app.Verification import Authorization
+import threading
 
 
 class Client:
@@ -13,6 +14,15 @@ class Client:
     def connect(self):
         self.client_socket.connect((self.host, self.port))
         print(f"Connected to server at {self.host}:{self.port}")
+
+    # def receive_messages(self):
+    #     while True:
+    #         try:
+    #             response = self.client_socket.recv(5048).decode()
+    #             return response
+    #         except ConnectionResetError:
+    #             print("Server disconnected.")
+    #             break
 
     def run(self):
         self.connect()
@@ -30,8 +40,8 @@ class Client:
                 print("Authentication successful.")
 
                 user_data = pickle.dumps(user)
-
                 self.client_socket.send(user_data)
+
                 self.menu()
 
             else:
@@ -60,24 +70,27 @@ class Client:
                 print("Invalid choice. Please try again.")
 
     def action(self, response):
-        # response = self.client_socket.recv(5048).decode()
         print(response)
+        # self.receive_messages()
+
         while True:
             choice = input("Enter Choice:\n1. Bid\n2. Exit room\n:")
+            response = self.client_socket.recv(5048).decode()
+            print(response)
             if choice == "1":
-                self.client_socket.send(choice.encode())
-                response = self.client_socket.recv(5048).decode()
-                print(response)
-
+                choice = "bid_place"
+                amount = input("Amount: ")
+                amount_list = [choice, amount]
+                self.client_socket.send(",".join(amount_list).encode())
             elif choice == "2":
                 choice = "0"
-                self.client_socket.send(choice.encode())
-                response = self.client_socket.recv(5048).decode()
-                print(response)
                 print("Exiting the room.")
                 break
             else:
                 print("Invalid choice. Please try again.")
+
+            response = self.client_socket.recv(5048).decode()
+            print(response)
 
         print("Failed to join the room.")
 

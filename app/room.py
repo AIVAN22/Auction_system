@@ -49,12 +49,13 @@ class Room:
         self.item_manager.add_item_to_database(self.item_name, self.starting_price)
 
     def place_bid(self, user, bid_amount):
+        self.highest_bid = int(self.highest_bid)
         if bid_amount > self.highest_bid:
             self.highest_bid = bid_amount
             self.highest_bidder = user
-            print(f"{user.name} placed a bid of {bid_amount} on {self.item_name}.")
+            return f"{user.name} placed a bid of {bid_amount} on {self.item_name}."
         else:
-            print("Bid amount is not higher than the current highest bid.")
+            return "Bid amount is not higher than the current highest bid."
 
     def end_auction(self):
         if self.highest_bidder:
