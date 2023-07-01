@@ -1,4 +1,5 @@
-import socket
+import websockets
+import asyncio
 import pickle
 import threading
 from random import randrange
@@ -10,12 +11,11 @@ class Server:
     def __init__(self, host, port):
         self.host = host
         self.port = port
-        self.server_socket = None
         self.room_manager = RoomManager()
         self.user_manager = DataManager()
         self.item_manager = ItemManager()
         self.active_rooms = {}
-        self.client_list = []
+        self.client_list = set()
 
     def get_user_room(self, user):
         for room_name, room in self.active_rooms.items():
@@ -56,89 +56,81 @@ class Server:
         else:
             return "Invalid data"
 
-    def start(self):
-        self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.bind((self.host, self.port))
-        self.server_socket.listen(5)
-        print(f"Server listening on {self.host}:{self.port}...")
-
-        while True:
-            client_socket, client_address = self.server_socket.accept()
-            print(f"New client connected: {client_address}")
-            client_thread = threading.Thread(
-                target=self.handle_client, args=(client_socket,)
-            )
-            client_thread.start()
-
-    def send_to_all(self, response):
-        response = response.encode()
-        for client in self.client_list:
-            try:
-                client.send(response)
-            except socket.error:
-                continue
-
-    def handle_client(self, client_socket):
-        self.client_list.append(client_socket)
+    async def handle_client(self, websocket):
+        self.client_list.add(websocket)
         user = None
-        while True:
+        running = True
+        while running:
             try:
-                user_data = client_socket.recv(5048)
-                if not user_data:
-                    break
-                try:
-                    request = ""
-                    user = pickle.loads(user_data)
-                    print("Received user_data:", user)
-                    log_in = "Log in"
-                    self.room_manager.create_room_table()
-                    self.user_manager.create_users_table()
-                    self.item_manager.create_items_table()
-                    self.user_manager.save_logs(user.username, log_in)
-                except pickle.UnpicklingError:
-                    print("Unpickling user_data:", user_data)
-                    user_data_decode = user_data.decode()
-                    if user_data_decode == "Exit":
+                async for user_data in websocket:
+                    if not user_data:
                         break
-                    if user_data_decode == "0":
-                        response = "Back to menu"
-                        client_socket.send(response.encode())
+                    try:
+                        request = ""
+                        user = pickle.loads(user_data)
+                        print("Received user_data:", user)
+                        log_in = "Log in"
+                        self.room_manager.create_room_table()
+                        self.user_manager.create_users_table()
+                        self.item_manager.create_items_table()
+                        self.user_manager.save_logs(user.username, log_in)
+                    except pickle.UnpicklingError:
+                        print("Unpickling user_data:", user_data)
+                        user_data_decode = user_data.decode()
+                        if user_data_decode == "Exit":
+                            running = False
+                        if user_data_decode == "0":
+                            response = "Back to menu"
+                            await websocket.send(response)
+                            continue
+
+                        user_data_parts = user_data_decode.split(",")
+                        if "room_creator" == user_data_parts[0]:
+                            request = user_data_decode
+                        elif "get_rooms" == user_data_parts[0]:
+                            request = user_data_decode
+                        elif "bid_place" == user_data_parts[0]:
+                            bid_list = ["bid_place", user_data_parts[1]]
+                            request = ",".join(bid_list)
+                        else:
+                            join_list = ["join_room", user_data_decode]
+                            request = ",".join(join_list)
+
+                        response = self.process_request(request, user)
+                        await websocket.send(response)
                         continue
-
-                    user_data_parts = user_data_decode.split(",")
-                    if "room_creator" == user_data_parts[0]:
-                        request = user_data_decode
-                    elif "get_rooms" == user_data_parts[0]:
-                        request = user_data_decode
-                    elif "bid_place" == user_data_parts[0]:
-                        bid_list = ["bid_place", user_data_parts[1]]
-                        request = ",".join(bid_list)
-                    else:
-                        join_list = ["join_room", user_data_decode]
-                        request = ",".join(join_list)
-
-                    response = self.process_request(request, user)
-                    client_socket.send(response.encode())
-                    continue
-
-                request = client_socket.recv(5048).decode()
-                print(request)
-                if not request or request == "Exit":
-                    break
-                else:
-                    response = self.process_request(request, user)
-                    client_socket.send(response.encode())
+                    if running:
+                        request = await websocket.recv()
+                        request = request.decode()
+                        print(request)
+                        if not request or request == "Exit":
+                            running = False
+                        else:
+                            response = self.process_request(request, user)
+                            await websocket.send(response)
+                            await self.send_to_all(response)
             except ConnectionResetError:
                 break
         log_out = "Log out"
         if user is not None:
             self.user_manager.save_logs(user.username, log_out)
-            client_address = client_socket.getpeername()
-            print(f"Client disconnected: {client_address}")
-            client_socket.close()
+            print(f"Client disconnected: {websocket.remote_address}")
         else:
             print(f"Client disconnected")
-            client_socket.close()
+        self.client_list.remove(websocket)
+
+    async def send_to_all(self, response):
+        for client in self.client_list:
+            try:
+                await client.send(response)
+            except websockets.exceptions.ConnectionClosedError:
+                continue
+
+    def start(self):
+        start_server = websockets.serve(self.handle_client, self.host, self.port)
+        asyncio.get_event_loop().run_until_complete(start_server)
+        print(f"Server listening on {self.host}:{self.port}...")
+        asyncio.get_event_loop().run_forever()
 
     def process_request(self, request, user):
         request_parts = request.split(",")
